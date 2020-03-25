@@ -32,7 +32,7 @@ impl Debug for Bullet {
 }
 
 impl Bullet {
-    const VELOCITY: f32 = 100.0;
+    const VELOCITY: f32 = 500.0;
 
     pub fn pos(&self) -> (f32, f32) {
         self.pos

@@ -122,7 +122,7 @@ impl Alien {
                     self.firing_plan = Some(FiringPlan {
                         dangerous: rand::thread_rng().gen_bool(0.2),
                         plan_made: now,
-                        delay: Duration::from_millis(rand::thread_rng().gen_range(200, 1000)),
+                        delay: Duration::from_millis(rand::thread_rng().gen_range(200, 700)),
                     })
                 }
             }

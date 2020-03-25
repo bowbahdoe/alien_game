@@ -243,7 +243,6 @@ fn tick(ctx: &mut Context, game: &mut Game, dt: Duration) -> GameResult<()> {
             red_sprite: &game.sprites.red_bullet,
         },
     ) {
-        println!("Fired {:?}", new_bullet);
         game.bullets.push(new_bullet);
     }
 
