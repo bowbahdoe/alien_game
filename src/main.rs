@@ -25,6 +25,7 @@ mod simple_collision;
 use crate::alien::Alien;
 use crate::bullet::{Bullet, BulletFactory, BulletFactoryImpl};
 use crate::simple_collision::{are_colliding, CollisionRect};
+use std::sync::Arc;
 
 const GAME_OVER_MESSAGES: [&'static str; 13] = [
     "You lost",
@@ -45,7 +46,7 @@ const GAME_OVER_MESSAGES: [&'static str; 13] = [
 #[derive(Debug)]
 struct Player {
     pos: (f32, f32),
-    sprite: Rc<graphics::Image>,
+    sprite: Arc<graphics::Image>,
 }
 
 impl CollisionRect for Player {
@@ -67,7 +68,7 @@ impl CollisionRect for Player {
 }
 
 impl Player {
-    fn starting_at(pos: (f32, f32), sprite: Rc<graphics::Image>) -> Player {
+    fn starting_at(pos: (f32, f32), sprite: Arc<graphics::Image>) -> Player {
         Player { pos, sprite }
     }
 
@@ -106,23 +107,23 @@ impl Default for PlayerIntent {
 }
 
 struct SpriteData {
-    alien_idle: Rc<graphics::Image>,
-    alien_firing: Rc<graphics::Image>,
-    player: Rc<graphics::Image>,
-    red_bullet: Rc<graphics::Image>,
-    green_bullet: Rc<graphics::Image>,
-    background: Rc<graphics::Image>,
+    alien_idle: Arc<graphics::Image>,
+    alien_firing: Arc<graphics::Image>,
+    player: Arc<graphics::Image>,
+    red_bullet: Arc<graphics::Image>,
+    green_bullet: Arc<graphics::Image>,
+    background: Arc<graphics::Image>,
 }
 
 impl SpriteData {
     fn load_from_resources(ctx: &mut Context) -> ggez::GameResult<SpriteData> {
         Ok(SpriteData {
-            alien_idle: Rc::new(graphics::Image::new(ctx, "/ENEMY.png")?),
-            alien_firing: Rc::new(graphics::Image::new(ctx, "/ENEMY_FIRING.png")?),
-            player: Rc::new(graphics::Image::new(ctx, "/PLAYER_OLD_2.png")?),
-            red_bullet: Rc::new(graphics::Image::new(ctx, "/Red_Missile.png")?),
-            green_bullet: Rc::new(graphics::Image::new(ctx, "/MISSILE_FIRED.png")?),
-            background: Rc::new(graphics::Image::new(ctx, "/Space.png")?),
+            alien_idle: Arc::new(graphics::Image::new(ctx, "/ENEMY.png")?),
+            alien_firing: Arc::new(graphics::Image::new(ctx, "/ENEMY_FIRING.png")?),
+            player: Arc::new(graphics::Image::new(ctx, "/PLAYER_OLD_2.png")?),
+            red_bullet: Arc::new(graphics::Image::new(ctx, "/Red_Missile.png")?),
+            green_bullet: Arc::new(graphics::Image::new(ctx, "/MISSILE_FIRED.png")?),
+            background: Arc::new(graphics::Image::new(ctx, "/Space.png")?),
         })
     }
 }

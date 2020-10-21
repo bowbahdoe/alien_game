@@ -7,12 +7,13 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 use std::time::Duration;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Bullet {
     pos: (f32, f32),
     color: BulletColor,
-    sprite: Rc<graphics::Image>,
+    sprite: Arc<graphics::Image>,
 }
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -72,9 +73,9 @@ pub trait BulletFactory {
 /// Simple bullet factory that keeps references to some Rcs to avoid extra clones.
 pub struct BulletFactoryImpl<'a> {
     /// The sprite to use for a red bullet.
-    pub red_sprite: &'a Rc<graphics::Image>,
+    pub red_sprite: &'a Arc<graphics::Image>,
     /// The sprite to use for a green bullet.
-    pub green_sprite: &'a Rc<graphics::Image>,
+    pub green_sprite: &'a Arc<graphics::Image>,
 }
 
 impl BulletFactory for BulletFactoryImpl<'_> {

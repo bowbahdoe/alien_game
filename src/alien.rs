@@ -10,6 +10,7 @@ use std::iter::Peekable;
 use std::ops::Add;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
+use std::sync::Arc;
 
 #[derive(Debug, Copy, Clone)]
 struct MovementPlan {
@@ -29,8 +30,8 @@ struct FiringPlan {
 pub struct Alien {
     pos: (f32, f32),
     x_movement_range: (f32, f32),
-    idle: Rc<graphics::Image>,
-    firing: Rc<graphics::Image>,
+    idle: Arc<graphics::Image>,
+    firing: Arc<graphics::Image>,
     firing_plan: Option<FiringPlan>,
     movement_plan: Option<MovementPlan>,
 }
@@ -49,8 +50,8 @@ impl Alien {
     pub fn starting_at(
         pos: (f32, f32),
         x_movement_range: (f32, f32),
-        idle: Rc<graphics::Image>,
-        firing: Rc<graphics::Image>,
+        idle: Arc<graphics::Image>,
+        firing: Arc<graphics::Image>,
     ) -> Alien {
         Alien {
             pos,
