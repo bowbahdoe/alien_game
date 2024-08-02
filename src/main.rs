@@ -1,19 +1,13 @@
 use ggez::audio::SoundSource;
 use ggez::event::{self, quit, EventHandler, KeyCode, KeyMods};
-use ggez::filesystem;
-use ggez::graphics::Font;
-use ggez::graphics::{BlendMode, DrawParam, Drawable, Rect, Text};
-use ggez::nalgebra::Point2;
-use ggez::{audio, GameError};
-use ggez::{graphics, Context, ContextBuilder, GameResult};
-use rand::seq::SliceRandom;
+use ggez::graphics::{DrawParam, Drawable, Text};
+use ggez::mint::Point2;
+use ggez::{audio, graphics, Context, ContextBuilder, GameResult};
 use std::collections::HashSet;
 use std::env;
-use std::error::Error;
 use std::f32::consts::FRAC_PI_2;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
-use std::iter::Peekable;
 use std::path;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
@@ -23,10 +17,10 @@ mod bullet;
 mod simple_collision;
 
 use crate::alien::Alien;
-use crate::bullet::{Bullet, BulletFactory, BulletFactoryImpl};
+use crate::bullet::{Bullet, BulletFactoryImpl};
 use crate::simple_collision::{are_colliding, CollisionRect};
 
-const GAME_OVER_MESSAGES: [&'static str; 13] = [
+const _GAME_OVER_MESSAGES: [&str; 13] = [
     "You lost",
     "You can do better than that",
     "Catch Them!",
@@ -50,11 +44,11 @@ struct Player {
 
 impl CollisionRect for Player {
     fn top_left_x(&self) -> f32 {
-        self.pos.0 - self.sprite.dimensions().w as f32 / 2.0
+        self.pos.0 - self.sprite.dimensions().w / 2.0
     }
 
     fn top_left_y(&self) -> f32 {
-        self.pos.1 - self.sprite.dimensions().h as f32 / 2.0
+        self.pos.1 - self.sprite.dimensions().h / 2.0
     }
 
     fn width(&self) -> f32 {
@@ -74,15 +68,15 @@ impl Player {
     const PLAYER_SPEED: f32 = 1000.0;
 
     fn execute_intent(&mut self, player_intent: &PlayerIntent, dt: Duration) {
-        match player_intent {
-            &PlayerIntent::StayStill => {}
-            &PlayerIntent::MoveLeft => {
+        match *player_intent {
+            PlayerIntent::StayStill => {}
+            PlayerIntent::MoveLeft => {
                 self.pos = (
                     self.pos.0 - Player::PLAYER_SPEED * dt.as_secs_f32(),
                     self.pos.1,
                 )
             }
-            &PlayerIntent::MoveRight => {
+            PlayerIntent::MoveRight => {
                 self.pos = (
                     self.pos.0 + Player::PLAYER_SPEED * dt.as_secs_f32(),
                     self.pos.1,
@@ -93,17 +87,14 @@ impl Player {
 }
 
 #[derive(Debug)]
+#[derive(Default)]
 enum PlayerIntent {
     MoveLeft,
     MoveRight,
+    #[default]
     StayStill,
 }
 
-impl Default for PlayerIntent {
-    fn default() -> Self {
-        PlayerIntent::StayStill
-    }
-}
 
 struct SpriteData {
     alien_idle: Rc<graphics::Image>,
@@ -139,10 +130,9 @@ struct AudioData {
 
 impl AudioData {
     fn load_from_resources(ctx: &mut Context) -> ggez::GameResult<AudioData> {
-        let data = audio::SoundData::from_read(&mut filesystem::open(ctx, "/Bloop.mp3")?)?;
         Ok(AudioData {
-            bloop: audio::Source::from_data(ctx, data)?,
-        })
+            bloop: audio::Source::new(ctx, "/Bloop.ogg")?,
+        })      
     }
 }
 
@@ -174,9 +164,8 @@ struct Game {
 
 impl Game {
     fn starting(ctx: &mut Context) -> ggez::GameResult<Game> {
-        let screen_coordinates = graphics::screen_coordinates(&ctx);
+        let screen_coordinates = graphics::screen_coordinates(ctx);
         let sprites = SpriteData::load_from_resources(ctx)?;
-        let now = Instant::now();
         Ok(Game {
             alien: Alien::starting_at(
                 (50.0, 50.0),
@@ -194,14 +183,6 @@ impl Game {
             sprites,
             audio: AudioData::load_from_resources(ctx)?,
         })
-    }
-
-    fn high_score(&self) -> GameResult<Option<u32>> {
-        Ok(None)
-    }
-
-    fn set_high_score(&mut self) -> GameResult<()> {
-        Ok(())
     }
 
     fn player_intent(&self) -> PlayerIntent {
@@ -254,7 +235,7 @@ fn tick(ctx: &mut Context, game: &mut Game, dt: Duration) -> GameResult<()> {
             } else {
                 game.score += 1;
             }
-            game.audio.bloop.play()?;
+            game.audio.bloop.play(ctx)?;
         } else {
             keep.insert(idx);
         }
@@ -289,8 +270,8 @@ fn draw_player(ctx: &mut Context, game: &Game) -> GameResult<()> {
     game.sprites.player.draw(
         ctx,
         DrawParam::default()
-            .offset(Point2::new(0.5, 0.5))
-            .dest(Point2::new(game.player.pos.0, game.player.pos.1))
+            .offset(Point2{x: 0.5, y: 0.5})
+            .dest(Point2{x: game.player.pos.0, y: game.player.pos.1})
             .rotation(FRAC_PI_2),
     )
 }
@@ -299,15 +280,15 @@ fn draw_score(ctx: &mut Context, game: &Game) -> GameResult<()> {
     let text = Text::new(format!("{}", game.score));
     text.draw(
         ctx,
-        DrawParam::default().dest(Point2::new(
-            game.screen_size.0 as f32 / 2.0,
-            game.screen_size.1 as f32 / 2.0,
-        )),
+        DrawParam::default().dest(Point2{
+            x: game.screen_size.0 as f32 / 2.0,
+            y: game.screen_size.1 as f32 / 2.0,
+        }),
     )?;
     Ok(())
 }
 
-impl EventHandler for Game {
+impl EventHandler<ggez::GameError> for Game {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         let dt = Instant::now() - self.last_tick;
         tick(ctx, self, dt)?;
@@ -315,7 +296,7 @@ impl EventHandler for Game {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
-        graphics::clear(ctx, graphics::WHITE);
+        graphics::clear(ctx, graphics::Color::WHITE);
         draw_background(ctx, self)?;
         draw_bullets(ctx, self)?;
         draw_enemy(ctx, self)?;
@@ -369,9 +350,8 @@ fn main() -> GameResult<()> {
         ctx_builder = ctx_builder.add_resource_path(path);
     }
 
-    let (mut ctx, mut event_loop) = ctx_builder.build()?;
+    let (mut ctx, event_loop) = ctx_builder.build()?;
 
-    let mut my_game = Game::starting(&mut ctx)?;
-    event::run(&mut ctx, &mut event_loop, &mut my_game)?;
-    Ok(())
+    let my_game = Game::starting(&mut ctx)?;
+    event::run(ctx, event_loop, my_game);
 }

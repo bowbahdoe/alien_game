@@ -1,13 +1,12 @@
 [package]
 name = "rustisbetter"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Ethan McCue <emccue@live.com>"]
-edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+edition = "2021"
+resolver = "2"
 
 [dependencies]
-ggez = "0.5"
+ggez = "0.7" # ^0.7 broke everything
 rand = "0.7.3"
 
 [profile.dev]
