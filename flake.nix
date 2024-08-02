@@ -32,6 +32,7 @@
           ];
           LD_LIBRARY_PATH = "${lib.makeLibraryPath buildInputs}";
           WINIT_UNIX_BACKEND="x11";
+          RUST_BACKTRACE="1";
         };
       }
     );
