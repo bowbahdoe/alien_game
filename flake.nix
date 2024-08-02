@@ -22,10 +22,16 @@
             libudev-zero
             alsa-lib
             fontconfig
+
+            libxkbcommon
             libGL
-            libclang
+            xorg.libXcursor
+            xorg.libXrandr
+            xorg.libXi
+            xorg.libX11
           ];
           LD_LIBRARY_PATH = "${lib.makeLibraryPath buildInputs}";
+          WINIT_UNIX_BACKEND="x11";
         };
       }
     );
