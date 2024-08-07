@@ -1,7 +1,7 @@
 use crate::simple_collision::CollisionRect;
-use ggez::graphics::{DrawParam, Drawable};
-use ggez::nalgebra::Point2;
-use ggez::{graphics, Context, GameResult};
+use ggez::graphics;
+use ggez::graphics::{Canvas, DrawParam, Drawable};
+use ggez::mint::Point2;
 use std::f32::consts::FRAC_PI_2;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
@@ -49,14 +49,17 @@ impl Bullet {
         self.color != BulletColor::Green
     }
 
-    pub fn draw(&self, ctx: &mut Context) -> GameResult<()> {
+    pub fn draw(&self, canvas: &mut Canvas) {
         self.sprite.draw(
-            ctx,
+            canvas,
             DrawParam::default()
-                .offset(Point2::new(0.5, 0.5))
-                .dest(Point2::new(self.pos.0, self.pos.1))
+                .offset(Point2 { x: 0.5, y: 0.5 })
+                .dest(Point2 {
+                    x: self.pos.0,
+                    y: self.pos.1,
+                })
                 .rotation(FRAC_PI_2),
-        )
+        );
     }
 }
 
@@ -97,18 +100,18 @@ impl BulletFactory for BulletFactoryImpl<'_> {
 
 impl CollisionRect for Bullet {
     fn top_left_x(&self) -> f32 {
-        self.pos.0 - self.sprite.dimensions().w as f32 / 2.0
+        self.pos.0 - self.sprite.width() as f32 / 2.0
     }
 
     fn top_left_y(&self) -> f32 {
-        self.pos.1 - self.sprite.dimensions().h as f32 / 2.0
+        self.pos.1 - self.sprite.height() as f32 / 2.0
     }
 
     fn width(&self) -> f32 {
-        self.sprite.dimensions().w
+        self.sprite.width() as f32
     }
 
     fn height(&self) -> f32 {
-        self.sprite.dimensions().h
+        self.sprite.height() as f32
     }
 }

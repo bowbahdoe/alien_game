@@ -1,13 +1,10 @@
 use crate::bullet::{Bullet, BulletFactory};
-use ggez::graphics::{DrawParam, Drawable};
-use ggez::nalgebra::Point2;
-use ggez::{graphics, Context, GameResult};
-use rand;
+use ggez::graphics;
+use ggez::graphics::{Canvas, DrawParam, Drawable};
+use ggez::mint::Point2;
 use rand::Rng;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
-use std::iter::Peekable;
-use std::ops::Add;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
@@ -77,13 +74,13 @@ impl Alien {
     ) -> Option<Bullet> {
         let mut rng = rand::thread_rng();
 
-        let ((min_x, max_x)) = self.x_movement_range;
+        let (min_x, max_x) = self.x_movement_range;
         let start_pos = self.pos;
         let mut gen_movement_plan = || MovementPlan {
             start_pos,
-            next_pos: (rng.gen_range(min_x, max_x), start_pos.1),
+            next_pos: (rng.gen_range(min_x..max_x), start_pos.1),
             plan_made: now,
-            duration: Duration::from_millis(rand::thread_rng().gen_range(300, 2000)),
+            duration: Duration::from_millis(rand::thread_rng().gen_range(300..2000)),
         };
 
         match &self.movement_plan {
@@ -104,15 +101,15 @@ impl Alien {
         }
 
         let mut fired = None;
-        match &self.firing_plan {
-            &None => {
+        match self.firing_plan {
+            None => {
                 self.firing_plan = Some(FiringPlan {
                     dangerous: false,
                     plan_made: now,
                     delay: Duration::from_millis(1000),
                 })
             }
-            &Some(plan) => {
+            Some(plan) => {
                 if plan.plan_made + plan.delay < now {
                     if plan.dangerous {
                         fired = Some(bullet_factory.red_bullet(self.pos));
@@ -122,7 +119,7 @@ impl Alien {
                     self.firing_plan = Some(FiringPlan {
                         dangerous: rand::thread_rng().gen_bool(0.2),
                         plan_made: now,
-                        delay: Duration::from_millis(rand::thread_rng().gen_range(200, 700)),
+                        delay: Duration::from_millis(rand::thread_rng().gen_range(200..700)),
                     })
                 }
             }
@@ -131,17 +128,20 @@ impl Alien {
         fired
     }
 
-    pub fn draw(&self, ctx: &mut Context) -> GameResult<()> {
+    pub fn draw(&self, canvas: &mut Canvas) {
         let sprite = if self.will_fire(Instant::now() + Duration::from_millis(200)) {
             &self.firing
         } else {
             &self.idle
         };
         sprite.draw(
-            ctx,
+            canvas,
             DrawParam::default()
-                .offset(Point2::new(0.5, 0.5))
-                .dest(Point2::new(self.pos.0, self.pos.1)),
-        )
+                .offset(Point2 { x: 0.5, y: 0.5 })
+                .dest(Point2 {
+                    x: self.pos.0,
+                    y: self.pos.1,
+                }),
+        );
     }
 }

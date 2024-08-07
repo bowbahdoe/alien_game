@@ -1,19 +1,14 @@
 use ggez::audio::SoundSource;
-use ggez::event::{self, quit, EventHandler, KeyCode, KeyMods};
-use ggez::filesystem;
-use ggez::graphics::Font;
-use ggez::graphics::{BlendMode, DrawParam, Drawable, Rect, Text};
-use ggez::nalgebra::Point2;
-use ggez::{audio, GameError};
-use ggez::{graphics, Context, ContextBuilder, GameResult};
-use rand::seq::SliceRandom;
+use ggez::event::{self, EventHandler};
+use ggez::graphics::{Canvas, DrawParam, Drawable, Text};
+use ggez::input::keyboard::{KeyCode, KeyInput};
+use ggez::mint::Point2;
+use ggez::{audio, graphics, Context, ContextBuilder, GameResult};
 use std::collections::HashSet;
 use std::env;
-use std::error::Error;
 use std::f32::consts::FRAC_PI_2;
 use std::fmt;
 use std::fmt::{Debug, Formatter};
-use std::iter::Peekable;
 use std::path;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
@@ -23,10 +18,10 @@ mod bullet;
 mod simple_collision;
 
 use crate::alien::Alien;
-use crate::bullet::{Bullet, BulletFactory, BulletFactoryImpl};
+use crate::bullet::{Bullet, BulletFactoryImpl};
 use crate::simple_collision::{are_colliding, CollisionRect};
 
-const GAME_OVER_MESSAGES: [&'static str; 13] = [
+const _GAME_OVER_MESSAGES: [&str; 13] = [
     "You lost",
     "You can do better than that",
     "Catch Them!",
@@ -50,19 +45,19 @@ struct Player {
 
 impl CollisionRect for Player {
     fn top_left_x(&self) -> f32 {
-        self.pos.0 - self.sprite.dimensions().w as f32 / 2.0
+        self.pos.0 - self.sprite.width() as f32 / 2.0
     }
 
     fn top_left_y(&self) -> f32 {
-        self.pos.1 - self.sprite.dimensions().h as f32 / 2.0
+        self.pos.1 - self.sprite.height() as f32 / 2.0
     }
 
     fn width(&self) -> f32 {
-        self.sprite.dimensions().w
+        self.sprite.width() as f32
     }
 
     fn height(&self) -> f32 {
-        self.sprite.dimensions().h
+        self.sprite.height() as f32
     }
 }
 
@@ -74,15 +69,15 @@ impl Player {
     const PLAYER_SPEED: f32 = 1000.0;
 
     fn execute_intent(&mut self, player_intent: &PlayerIntent, dt: Duration) {
-        match player_intent {
-            &PlayerIntent::StayStill => {}
-            &PlayerIntent::MoveLeft => {
+        match *player_intent {
+            PlayerIntent::StayStill => {}
+            PlayerIntent::MoveLeft => {
                 self.pos = (
                     self.pos.0 - Player::PLAYER_SPEED * dt.as_secs_f32(),
                     self.pos.1,
                 )
             }
-            &PlayerIntent::MoveRight => {
+            PlayerIntent::MoveRight => {
                 self.pos = (
                     self.pos.0 + Player::PLAYER_SPEED * dt.as_secs_f32(),
                     self.pos.1,
@@ -92,17 +87,12 @@ impl Player {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 enum PlayerIntent {
     MoveLeft,
     MoveRight,
+    #[default]
     StayStill,
-}
-
-impl Default for PlayerIntent {
-    fn default() -> Self {
-        PlayerIntent::StayStill
-    }
 }
 
 struct SpriteData {
@@ -117,12 +107,12 @@ struct SpriteData {
 impl SpriteData {
     fn load_from_resources(ctx: &mut Context) -> ggez::GameResult<SpriteData> {
         Ok(SpriteData {
-            alien_idle: Rc::new(graphics::Image::new(ctx, "/ENEMY.png")?),
-            alien_firing: Rc::new(graphics::Image::new(ctx, "/ENEMY_FIRING.png")?),
-            player: Rc::new(graphics::Image::new(ctx, "/PLAYER_OLD_2.png")?),
-            red_bullet: Rc::new(graphics::Image::new(ctx, "/Red_Missile.png")?),
-            green_bullet: Rc::new(graphics::Image::new(ctx, "/MISSILE_FIRED.png")?),
-            background: Rc::new(graphics::Image::new(ctx, "/Space.png")?),
+            alien_idle: Rc::new(graphics::Image::from_path(ctx, "/ENEMY.png")?),
+            alien_firing: Rc::new(graphics::Image::from_path(ctx, "/ENEMY_FIRING.png")?),
+            player: Rc::new(graphics::Image::from_path(ctx, "/PLAYER_OLD_2.png")?),
+            red_bullet: Rc::new(graphics::Image::from_path(ctx, "/Red_Missile.png")?),
+            green_bullet: Rc::new(graphics::Image::from_path(ctx, "/MISSILE_FIRED.png")?),
+            background: Rc::new(graphics::Image::from_path(ctx, "/Space.png")?),
         })
     }
 }
@@ -139,9 +129,8 @@ struct AudioData {
 
 impl AudioData {
     fn load_from_resources(ctx: &mut Context) -> ggez::GameResult<AudioData> {
-        let data = audio::SoundData::from_read(&mut filesystem::open(ctx, "/Bloop.mp3")?)?;
         Ok(AudioData {
-            bloop: audio::Source::from_data(ctx, data)?,
+            bloop: audio::Source::new(ctx, "/Bloop.ogg")?,
         })
     }
 }
@@ -174,9 +163,9 @@ struct Game {
 
 impl Game {
     fn starting(ctx: &mut Context) -> ggez::GameResult<Game> {
-        let screen_coordinates = graphics::screen_coordinates(&ctx);
+        let canvas = Canvas::from_frame(ctx, None);
+        let screen_coordinates = canvas.screen_coordinates().unwrap();
         let sprites = SpriteData::load_from_resources(ctx)?;
-        let now = Instant::now();
         Ok(Game {
             alien: Alien::starting_at(
                 (50.0, 50.0),
@@ -194,14 +183,6 @@ impl Game {
             sprites,
             audio: AudioData::load_from_resources(ctx)?,
         })
-    }
-
-    fn high_score(&self) -> GameResult<Option<u32>> {
-        Ok(None)
-    }
-
-    fn set_high_score(&mut self) -> GameResult<()> {
-        Ok(())
     }
 
     fn player_intent(&self) -> PlayerIntent {
@@ -254,7 +235,7 @@ fn tick(ctx: &mut Context, game: &mut Game, dt: Duration) -> GameResult<()> {
             } else {
                 game.score += 1;
             }
-            game.audio.bloop.play()?;
+            game.audio.bloop.play(ctx)?;
         } else {
             keep.insert(idx);
         }
@@ -270,44 +251,45 @@ fn tick(ctx: &mut Context, game: &mut Game, dt: Duration) -> GameResult<()> {
     Ok(())
 }
 
-fn draw_background(ctx: &mut Context, game: &Game) -> GameResult<()> {
-    game.sprites.background.draw(ctx, DrawParam::default())
+fn draw_background(canvas: &mut Canvas, game: &Game) {
+    game.sprites.background.draw(canvas, DrawParam::default())
 }
 
-fn draw_bullets(ctx: &mut Context, game: &Game) -> GameResult<()> {
+fn draw_bullets(canvas: &mut Canvas, game: &Game) {
     for bullet in game.bullets.iter() {
-        bullet.draw(ctx)?;
+        bullet.draw(canvas);
     }
-    Ok(())
 }
 
-fn draw_enemy(ctx: &mut Context, game: &Game) -> GameResult<()> {
-    game.alien.draw(ctx)
+fn draw_enemy(canvas: &mut Canvas, game: &Game) {
+    game.alien.draw(canvas)
 }
 
-fn draw_player(ctx: &mut Context, game: &Game) -> GameResult<()> {
+fn draw_player(canvas: &mut Canvas, game: &Game) {
     game.sprites.player.draw(
-        ctx,
+        canvas,
         DrawParam::default()
-            .offset(Point2::new(0.5, 0.5))
-            .dest(Point2::new(game.player.pos.0, game.player.pos.1))
+            .offset(Point2 { x: 0.5, y: 0.5 })
+            .dest(Point2 {
+                x: game.player.pos.0,
+                y: game.player.pos.1,
+            })
             .rotation(FRAC_PI_2),
-    )
+    );
 }
 
-fn draw_score(ctx: &mut Context, game: &Game) -> GameResult<()> {
+fn draw_score(canvas: &mut Canvas, game: &Game) {
     let text = Text::new(format!("{}", game.score));
     text.draw(
-        ctx,
-        DrawParam::default().dest(Point2::new(
-            game.screen_size.0 as f32 / 2.0,
-            game.screen_size.1 as f32 / 2.0,
-        )),
-    )?;
-    Ok(())
+        canvas,
+        DrawParam::default().dest(Point2 {
+            x: game.screen_size.0 as f32 / 2.0,
+            y: game.screen_size.1 as f32 / 2.0,
+        }),
+    );
 }
 
-impl EventHandler for Game {
+impl EventHandler<ggez::GameError> for Game {
     fn update(&mut self, ctx: &mut Context) -> GameResult<()> {
         let dt = Instant::now() - self.last_tick;
         tick(ctx, self, dt)?;
@@ -315,52 +297,55 @@ impl EventHandler for Game {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
-        graphics::clear(ctx, graphics::WHITE);
-        draw_background(ctx, self)?;
-        draw_bullets(ctx, self)?;
-        draw_enemy(ctx, self)?;
-        draw_player(ctx, self)?;
-        draw_score(ctx, self)?;
-        graphics::present(ctx)?;
+        let mut canvas = graphics::Canvas::from_frame(ctx, graphics::Color::BLACK);
+        draw_background(&mut canvas, self);
+        draw_bullets(&mut canvas, self);
+        draw_enemy(&mut canvas, self);
+        draw_player(&mut canvas, self);
+        draw_score(&mut canvas, self);
+        canvas.finish(ctx)?;
         Ok(())
     }
 
     fn key_down_event(
         &mut self,
         ctx: &mut Context,
-        keycode: KeyCode,
-        _keymods: KeyMods,
-        _repeat: bool,
-    ) {
-        if keycode == KeyCode::Escape {
-            quit(ctx);
+        input: KeyInput,
+        _repeated: bool,
+    ) -> GameResult {
+        match input.keycode {
+            Some(KeyCode::Escape) => ctx.request_quit(),
+            Some(KeyCode::Left) => {
+                self.keys_pressed.left = true;
+            }
+            Some(KeyCode::Right) => {
+                self.keys_pressed.right = true;
+            }
+            _ => (), // Do nothing
         }
-
-        if keycode == KeyCode::Left {
-            self.keys_pressed.left = true;
-        }
-
-        if keycode == KeyCode::Right {
-            self.keys_pressed.right = true;
-        }
+        Ok(())
     }
 
-    fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
-        if keycode == KeyCode::Left {
-            self.keys_pressed.left = false;
+    fn key_up_event(&mut self, _ctx: &mut Context, input: KeyInput) -> GameResult {
+        match input.keycode {
+            Some(KeyCode::Left) => {
+                self.keys_pressed.left = false;
+            }
+            Some(KeyCode::Right) => {
+                self.keys_pressed.right = false;
+            }
+            _ => (), // Do nothing
         }
-
-        if keycode == KeyCode::Right {
-            self.keys_pressed.right = false;
-        }
+        Ok(())
     }
 
-    fn resize_event(&mut self, _ctx: &mut Context, width: f32, height: f32) {
+    fn resize_event(&mut self, _ctx: &mut Context, width: f32, height: f32) -> GameResult {
         self.screen_size = (width as u32, height as u32);
+        Ok(())
     }
 }
 
-fn main() -> GameResult<()> {
+fn main() -> GameResult {
     let mut ctx_builder = ContextBuilder::new("kablewey", "Ethan McCue");
 
     if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
@@ -369,9 +354,8 @@ fn main() -> GameResult<()> {
         ctx_builder = ctx_builder.add_resource_path(path);
     }
 
-    let (mut ctx, mut event_loop) = ctx_builder.build()?;
+    let (mut ctx, event_loop) = ctx_builder.build()?;
 
-    let mut my_game = Game::starting(&mut ctx)?;
-    event::run(&mut ctx, &mut event_loop, &mut my_game)?;
-    Ok(())
+    let my_game = Game::starting(&mut ctx)?;
+    event::run(ctx, event_loop, my_game)
 }
